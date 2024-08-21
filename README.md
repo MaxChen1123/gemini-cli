@@ -248,6 +248,46 @@ By default, `embed similar` will emit the ID of the similar entry and the
 similarity score for each record. The `--show` flag can be used to control which
 columns from the DB are printed out.
 
+### `template` - generate a text prompt from your own preset templates
+
+If you always pass some fixed format prompts like "what is the difference between __ and __?" or "explain __ in 3 sentences", `template` can help you generate those prompts in a convenient way.
+
+Use `--add string` flag to indicate that you want to add the argument as a template, and take `string` as the key to find it. The template, if you plan to insert some text into it later, should have one or more placeholders `%s`. There are some examples:
+```
+$ gemini-cli template --add diff "what is the difference between %s and %s?"
+```
+or 
+```
+$ gemini-cli t -a tsl "translate the following sentence into %s: %s"
+```
+
+The `--list` can be used to list all the templates you have added.
+```
+$ gemini-cli template --list
+
+diff    :what is the difference between %s and %s?
+tsl     :translate the following sentence into %s: %s
+```
+
+`--use key` is to utilize the template, the text arguments you've passed will be inserted in place of the placeholders in the template, and the filepath or the url will be passed just as in the `prompt` command.   
+```
+$ gemini-cli template --use diff "こんにちは" "おはよう"
+
+Both こんにちは (konnichiwa) and おはよう (ohayou) are Japanese greetings, but they differ in the time of day they are used:
+
+* **こんにちは (konnichiwa)** is used **from noon to evening**. It translates to "good afternoon" or "hello" in English. 
+* **おはようございます (ohayou gozaimasu)** is used **from morning until noon**. It translates to "good morning" in English.
+[...]
+```
+```
+$ gemini-cli t en 我不喜欢吃香菜,太难闻了 -u tsl
+
+I don't like cilantro. It smells too strong. 
+```
+
+Once you have configured the template combination that suits you, the `template` command will become very convenient.
+
+
 ## Acknowledgements
 
 `gemini-cli` is inspired by Simon Willison's [llm tool](https://llm.datasette.io/en/stable/), but
