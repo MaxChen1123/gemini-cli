@@ -52,6 +52,7 @@ func init() {
 	templateCmd.Flags().Bool("stream", true, "stream the response from the model")
 	templateCmd.Flags().String("temp", "", "temperature setting for the model")
 	templateCmd.Flags().BoolP("list", "l", false, "list templates")
+	templateCmd.Flags().StringP("del", "d", "", "delete a template")
 	//read config to get templates
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -76,6 +77,15 @@ func init() {
 }
 
 func runTemplateCmd(cmd *cobra.Command, args []string) {
+	delFlag := mustGetStringFlag(cmd, "del")
+	if delFlag != "" {
+		if templates[delFlag] != "" {
+			delTemplate(delFlag)
+			return
+		}
+		return
+	}
+
 	if mustGetBoolFlag(cmd, "list") {
 		for key, value := range templates {
 			fmt.Printf("%s\t:%s\n", key, value)
@@ -207,6 +217,60 @@ func runTemplateCmd(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+}
+
+func delTemplate(delFlag string) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	filePath := homeDir + templateFilePath
+	file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	temporaryFilePath := filePath + ".tmp"
+	tempFile, err := os.OpenFile(temporaryFilePath, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tempFile.Close()
+
+	scanner := bufio.NewScanner(file)
+	writer := bufio.NewWriter(tempFile)
+	defer writer.Flush()
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		key, _, ok := strings.Cut(line, ":")
+		if ok {
+			key := strings.TrimSpace(key)
+			if key != delFlag {
+				_, err := fmt.Fprintln(writer, line)
+				if err != nil {
+					os.Remove(temporaryFilePath)
+					log.Fatal("problem happened while writing to file:", err)
+					return
+				}
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		os.Remove(temporaryFilePath)
+		log.Fatal("problem happened while reading file:", err)
+		return
+	}
+
+	if err := os.Rename(temporaryFilePath, filePath); err != nil {
+		os.Remove(temporaryFilePath)
+		log.Fatal("problem happened while renaming file:", err)
+		return
+	}
+
 }
 
 func addTemplate(key string, value string) {
